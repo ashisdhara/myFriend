@@ -34,6 +34,7 @@ public class MyService extends Service {
 	static final int MSG_RECOGNIZER_START_LISTENING = 1;
 	static final int MSG_RECOGNIZER_CANCEL = 2;
 
+	//onCreate is executed during the first initialization
 	@Override
 	public void onCreate() {
 		Log.d("myfriend", "in oncreate myservice");
@@ -49,8 +50,6 @@ public class MyService extends Service {
 		mSpeechRecognizerIntent.putExtra(
 				RecognizerIntent.EXTRA_CALLING_PACKAGE, this.getPackageName());
 	}
-	
-	
 
 	protected static class IncomingHandler extends Handler {
 		private WeakReference<MyService> mtarget;
@@ -62,10 +61,10 @@ public class MyService extends Service {
 		@Override
 		public void handleMessage(Message msg) {
 			final MyService target = mtarget.get();
-			//Log.d("myfriend", "inside handle message");
+			// Log.d("myfriend", "inside handle message");
 			switch (msg.what) {
 			case MSG_RECOGNIZER_START_LISTENING:
-				//Log.d("myfriend", "message received");
+				// Log.d("myfriend", "message received");
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
 					// turn off beep sound
 					if (!mIsStreamSolo) {
@@ -78,7 +77,7 @@ public class MyService extends Service {
 					target.mSpeechRecognizer
 							.startListening(target.mSpeechRecognizerIntent);
 					target.mIsListening = true;
-				
+
 				}
 				break;
 
@@ -90,7 +89,7 @@ public class MyService extends Service {
 				}
 				target.mSpeechRecognizer.cancel();
 				target.mIsListening = false;
-				
+
 				break;
 			}
 		}
@@ -104,7 +103,7 @@ public class MyService extends Service {
 			// TODO Auto-generated method stub
 
 		}
-
+		// onFinish is triggered when listening activity is finished  
 		@Override
 		public void onFinish() {
 			mIsCountDownOn = false;
@@ -119,6 +118,7 @@ public class MyService extends Service {
 		}
 	};
 
+	
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
@@ -132,7 +132,7 @@ public class MyService extends Service {
 	}
 
 	protected class SpeechRecognitionListener implements RecognitionListener {
-
+		//when speechrecognizer is ready to take input 
 		@Override
 		public void onBeginningOfSpeech() {
 			Log.d("myfriend", "speech recog");
@@ -142,19 +142,22 @@ public class MyService extends Service {
 				mIsCountDownOn = false;
 				mNoSpeechCountDown.cancel();
 			}
-			
+
 		}
 
 		@Override
 		public void onBufferReceived(byte[] buffer) {
 			Log.d("myfriend", "onBuffer");
 		}
-
+		
+		//When the speech input is finished 
 		@Override
 		public void onEndOfSpeech() {
 			Log.d("myfriend", "end of speech");
 		}
-
+		
+		//Whenever error is encountered during speech recognition
+		// doesnt include network or undetected word error 
 		@Override
 		public void onError(int error) {
 			if (mIsCountDownOn) {
@@ -181,6 +184,7 @@ public class MyService extends Service {
 			Log.d("myfriend", "onPartialresults");
 		}
 
+		
 		@Override
 		public void onReadyForSpeech(Bundle params) {
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
@@ -191,28 +195,42 @@ public class MyService extends Service {
 			Log.d("myfriend", "onReadyForSpeech");
 		}
 
+		//onResults triggered when results are found 
 		@Override
 		public void onResults(Bundle results) {
-			
+
 			Log.d("myfriend", "onResults");
-			  ArrayList strlist = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-			  for (int i = 0; i < strlist.size();i++ ) {
-			   Log.d("myfriend", "result=" + strlist.get(i));
-			   
-			   mIsListening = false;
+			//strlist array stores the results 
+			ArrayList strlist = results
+					.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+			for (int i = 0; i < strlist.size(); i++) {
+				Log.d("myfriend", "result=" + strlist.get(i));
+				String result = (String) strlist.get(i);
+				Log.d("myfriend", "" + result);
+				// whenever any one of the results matches with "help"
+				if (result.toLowerCase().contains("help")) {
+				
+					// Launching activity Worddetected class
+					Intent dialogIntent = new Intent(getBaseContext(), WordDetected.class);
+					dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+					getApplication().startActivity(dialogIntent);
+				}
+
+				mIsListening = false;
 				Message message = Message.obtain(null,
 						MSG_RECOGNIZER_START_LISTENING);
 				try {
+					//Sending message again (to the same service)
 					mServerMessenger.send(message);
 				} catch (RemoteException e) {
 
 				}
-			  }
+			}
 		}
 
 		@Override
 		public void onRmsChanged(float rmsdB) {
-			//Log.d("myfriend", "onRmsChanged");
+			// Log.d("myfriend", "onRmsChanged");
 		}
 
 	}
